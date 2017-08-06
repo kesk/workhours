@@ -34,7 +34,7 @@ class WorkDayActivity : AppCompatActivity(),
 
         restoreState(savedInstanceState)
 
-        datePickButton.setOnClickListener {
+        workDateButton.setOnClickListener {
             DatePickerFragment.create(WORK_DAY_DATE)
                     .show(fragmentManager, "datePicker")
         }
@@ -63,7 +63,7 @@ class WorkDayActivity : AppCompatActivity(),
     override fun onDatePicked(id: String, pickedDate: Date) {
         val dateFormat = android.text.format.DateFormat.getDateFormat(this)
         workDayDate = pickedDate
-        datePickButton.text = pickedDate.format(dateFormat)
+        workDateButton.text = pickedDate.format(dateFormat)
     }
 
     override fun onTimePicked(id: String, pickedTime: Time) {
