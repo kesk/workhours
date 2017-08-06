@@ -6,6 +6,7 @@ import android.app.DialogFragment
 import android.content.Context
 import android.os.Bundle
 import android.widget.DatePicker
+import kesk.workhours.model.Date
 import java.util.*
 
 class DatePickerFragment : DialogFragment(),
@@ -42,6 +43,6 @@ class DatePickerFragment : DialogFragment(),
     }
 
     override fun onDateSet(view: DatePicker?, year: Int, month: Int, dayOfMonth: Int) {
-        id?.let { listener?.onDatePicked(it, year, month, dayOfMonth) }
+        id?.let { listener?.onDatePicked(it, Date(year, month, dayOfMonth)) }
     }
 }

@@ -2,14 +2,14 @@ package kesk.workhours
 
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
+import kesk.workhours.model.Date
+import kesk.workhours.model.Time
 import kesk.workhours.pickers.DatePickedListener
 import kesk.workhours.pickers.DatePickerFragment
 import kesk.workhours.pickers.TimePickedListener
 import kesk.workhours.pickers.TimePickerFragment
 import kotlinx.android.synthetic.main.activity_work_day.*
 import net.danlew.android.joda.JodaTimeAndroid
-import org.joda.time.DateTime
-import java.text.DateFormat
 
 class WorkDayActivity : AppCompatActivity(),
         DatePickedListener,
@@ -21,7 +21,7 @@ class WorkDayActivity : AppCompatActivity(),
     val LUNCH_END_PICKER = 4
     val WORK_DAY_END_PICKER = 5
 
-    var workDayDate: WorkDayDate? = null
+    var workDayDate: Date? = null
     var workDayStartTime: Time? = null
     var workDayEndTime: Time? = null
     var lunchStart: Time? = null
@@ -60,16 +60,14 @@ class WorkDayActivity : AppCompatActivity(),
         }
     }
 
-    override fun onDatePicked(id: Int, year: Int, month: Int, day: Int) {
+    override fun onDatePicked(id: Int, pickedDate: Date) {
         val dateFormat = android.text.format.DateFormat.getDateFormat(this)
-        val newDate = WorkDayDate(year, month, day)
-        workDayDate = newDate
-        datePickButton.text = newDate.format(dateFormat)
+        workDayDate = pickedDate
+        datePickButton.text = pickedDate.format(dateFormat)
     }
 
-    override fun onTimePicked(id: Int, hourOfDay: Int, minute: Int) {
+    override fun onTimePicked(id: Int, pickedTime: Time) {
         val timeFormat = android.text.format.DateFormat.getTimeFormat(this)
-        val pickedTime = Time(hourOfDay, minute)
 
         when (id) {
             WORK_DAY_START_PICKER -> {
@@ -98,59 +96,33 @@ class WorkDayActivity : AppCompatActivity(),
         super.onSaveInstanceState(outState)
         val bundle = Bundle()
 
-        bundle.putIntArray("work_day_date", workDayDate?.toArray())
-        bundle.putIntArray("work_day_start_time", workDayStartTime?.toArray())
-        bundle.putIntArray("work_day_end_time", workDayEndTime?.toArray())
-        bundle.putIntArray("lunch_start_time", lunchStart?.toArray())
-        bundle.putIntArray("lunch_end_time", lunchEnd?.toArray())
+        bundle.putDate("work_day_date", workDayDate)
+        bundle.putTime("work_day_start_time", workDayStartTime)
+        bundle.putTime("work_day_end_time", workDayEndTime)
+        bundle.putTime("lunch_start_time", lunchStart)
+        bundle.putTime("lunch_end_time", lunchEnd)
         outState?.putAll(bundle)
     }
 
     private fun restoreState(bundle: Bundle?) {
-        try {
-            bundle?.getIntArray("work_day_date")?.let {
-                onDatePicked(WORK_DAY_DATE_PICKER, it[0], it[1], it[2])
-            }
-
-            bundle?.getIntArray("work_day_start_time")?.let {
-                onTimePicked(WORK_DAY_START_PICKER, it[0], it[1])
-            }
-
-            bundle?.getIntArray("work_day_end_time")?.let {
-                onTimePicked(WORK_DAY_END_PICKER, it[0], it[1])
-            }
-
-            bundle?.getIntArray("lunch_start_time")?.let {
-                onTimePicked(LUNCH_START_PICKER, it[0], it[1])
-            }
-
-            bundle?.getIntArray("lunch_end_time")?.let {
-                onTimePicked(LUNCH_END_PICKER, it[0], it[1])
-            }
-        } catch (e: IndexOutOfBoundsException) {
-            throw IllegalArgumentException("Could not restore state", e)
+        bundle?.getDate("work_day_date")?.let {
+            onDatePicked(WORK_DAY_DATE_PICKER, it)
         }
-    }
-}
 
-data class WorkDayDate(val year: Int, val month: Int, val day: Int) {
-    fun format(formatter: DateFormat): CharSequence {
-        val date = DateTime(year, month, day, 0, 0)
-        return formatter.format(date.toDate())
-    }
+        bundle?.getTime("work_day_start_time")?.let {
+            onTimePicked(WORK_DAY_START_PICKER, it)
+        }
 
-    fun toArray(): IntArray {
-        return intArrayOf(year, month, day)
-    }
-}
+        bundle?.getTime("work_day_end_time")?.let {
+            onTimePicked(WORK_DAY_END_PICKER, it)
+        }
 
-data class Time(val hour: Int, val minute: Int) {
-    fun format(formatter: DateFormat): CharSequence {
-        val date = DateTime.now().withHourOfDay(hour).withMinuteOfHour(minute)
-        return formatter.format(date.toDate())
-    }
+        bundle?.getTime("lunch_start_time")?.let {
+            onTimePicked(LUNCH_START_PICKER, it)
+        }
 
-    fun toArray(): IntArray {
-        return intArrayOf(hour, minute)
+        bundle?.getTime("lunch_end_time")?.let {
+            onTimePicked(LUNCH_END_PICKER, it)
+        }
     }
 }

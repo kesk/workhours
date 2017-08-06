@@ -1,5 +1,7 @@
 package kesk.workhours.pickers
 
+import kesk.workhours.model.Date
+
 interface DatePickedListener {
-    fun onDatePicked(id: Int, year: Int, month: Int, dayOfMonth: Int)
+    fun onDatePicked(id: Int, date: Date)
 }

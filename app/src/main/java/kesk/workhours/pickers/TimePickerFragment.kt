@@ -6,6 +6,7 @@ import android.app.TimePickerDialog
 import android.content.Context
 import android.os.Bundle
 import android.widget.TimePicker
+import kesk.workhours.model.Time
 import java.util.*
 
 class TimePickerFragment : DialogFragment(),
@@ -41,6 +42,6 @@ class TimePickerFragment : DialogFragment(),
     }
 
     override fun onTimeSet(view: TimePicker?, hourOfDay: Int, minute: Int) {
-        id?.let { listener?.onTimePicked(it, hourOfDay, minute) }
+        id?.let { listener?.onTimePicked(it, Time(hourOfDay, minute)) }
     }
 }
