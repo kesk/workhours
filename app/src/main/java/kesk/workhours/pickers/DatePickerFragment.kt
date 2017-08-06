@@ -2,44 +2,27 @@ package kesk.workhours.pickers
 
 import android.app.DatePickerDialog
 import android.app.Dialog
-import android.app.DialogFragment
-import android.content.Context
 import android.os.Bundle
 import android.widget.DatePicker
 import kesk.workhours.model.Date
-import java.util.*
+import org.joda.time.DateTime
 
-class DatePickerFragment : DialogFragment(),
+class DatePickerFragment : PickerFragment(),
         DatePickerDialog.OnDateSetListener {
 
     var listener: DatePickedListener? = null
-    var id: String? = null
 
     companion object {
-        fun create(id: String): DatePickerFragment {
-            val bundle = Bundle()
-            bundle.putString("picker_id", id)
-            val fragment = DatePickerFragment()
-            fragment.arguments = bundle
-            return fragment
+        fun create(id: String): PickerFragment {
+            return PickerFragment.create(id, DatePickerFragment())
         }
     }
 
-    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        val calendar = Calendar.getInstance()
-        val year = calendar.get(Calendar.YEAR)
-        val month = calendar.get(Calendar.MONTH)
-        val dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH)
-
-        id = arguments.getString("picker_id")
-
-        return DatePickerDialog(activity, this, year, month, dayOfMonth)
-    }
-
-    override fun onAttach(context: Context?) {
-        super.onAttach(context)
-
+    override fun onCreatePickerDialog(savedInstanceState: Bundle?): Dialog {
+        val now = DateTime.now()
         listener = context as DatePickedListener
+
+        return DatePickerDialog(activity, this, now.year, now.monthOfYear, now.dayOfMonth)
     }
 
     override fun onDateSet(view: DatePicker?, year: Int, month: Int, dayOfMonth: Int) {
