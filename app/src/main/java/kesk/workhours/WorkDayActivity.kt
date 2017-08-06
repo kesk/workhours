@@ -1,21 +1,18 @@
 package kesk.workhours
 
-import android.app.DatePickerDialog
-import android.app.Dialog
-import android.app.DialogFragment
-import android.app.TimePickerDialog
-import android.content.Context
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
-import android.widget.DatePicker
-import android.widget.TimePicker
+import kesk.workhours.pickers.DatePickedListener
+import kesk.workhours.pickers.DatePickerFragment
+import kesk.workhours.pickers.TimePickedListener
+import kesk.workhours.pickers.TimePickerFragment
 import kotlinx.android.synthetic.main.activity_work_day.*
+import net.danlew.android.joda.JodaTimeAndroid
+import org.joda.time.DateTime
 import java.text.DateFormat
-import java.text.SimpleDateFormat
-import java.util.*
 
 class WorkDayActivity : AppCompatActivity(),
-        DatePickerDialog.OnDateSetListener,
+        DatePickedListener,
         TimePickedListener {
 
     val WORK_DAY_DATE_PICKER = 1
@@ -24,27 +21,31 @@ class WorkDayActivity : AppCompatActivity(),
     val LUNCH_END_PICKER = 4
     val WORK_DAY_END_PICKER = 5
 
-    val dateFormater = SimpleDateFormat("yyyy-MM-dd")
-    val timeFormater = SimpleDateFormat("HH:mm")
-
-    val workDayStart = Calendar.getInstance()
-    var workDayEnd: Calendar? = null
-
-    var lunchStart: Calendar? = null
-    var lunchEnd: Calendar? = null
+    var workDayDate: WorkDayDate? = null
+    var workDayStartTime: Time? = null
+    var workDayEndTime: Time? = null
+    var lunchStart: Time? = null
+    var lunchEnd: Time? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        JodaTimeAndroid.init(this)
         setContentView(R.layout.activity_work_day)
 
-        datePickButton.text = dateFormater.format(workDayStart.time)
+        restoreState(savedInstanceState)
+
         datePickButton.setOnClickListener {
-            //DatePickerFragment().show(fragmentManager, "datePicker")
+            DatePickerFragment.create(WORK_DAY_DATE_PICKER)
+                    .show(fragmentManager, "datePicker")
         }
 
-        workDayStartButton.text = timeFormater.format(workDayStart.time)
         workDayStartButton.setOnClickListener {
             TimePickerFragment.create(WORK_DAY_START_PICKER)
+                    .show(fragmentManager, "timePicker")
+        }
+
+        workDayEndButton.setOnClickListener {
+            TimePickerFragment.create(WORK_DAY_END_PICKER)
                     .show(fragmentManager, "timePicker")
         }
 
@@ -52,73 +53,104 @@ class WorkDayActivity : AppCompatActivity(),
             TimePickerFragment.create(LUNCH_START_PICKER)
                     .show(fragmentManager, "timePicker")
         }
+
+        lunchEndButton.setOnClickListener {
+            TimePickerFragment.create(LUNCH_END_PICKER)
+                    .show(fragmentManager, "timePicker")
+        }
     }
 
-    override fun onDateSet(view: DatePicker?, year: Int, month: Int, day: Int) {
-        workDayStart.set(year, month, day)
-        datePickButton.text = dateFormater.format(workDayStart.time)
+    override fun onDatePicked(id: Int, year: Int, month: Int, day: Int) {
+        val dateFormat = android.text.format.DateFormat.getDateFormat(this)
+        val newDate = WorkDayDate(year, month, day)
+        workDayDate = newDate
+        datePickButton.text = newDate.format(dateFormat)
     }
 
-    override fun timePicked(id: Int, hourOfDay: Int, minute: Int) {
+    override fun onTimePicked(id: Int, hourOfDay: Int, minute: Int) {
+        val timeFormat = android.text.format.DateFormat.getTimeFormat(this)
+        val pickedTime = Time(hourOfDay, minute)
+
         when (id) {
             WORK_DAY_START_PICKER -> {
-                setTime(workDayStart, hourOfDay, minute)
-                workDayStartButton.text = timeFormater.format(workDayStart.time)
+                workDayStartTime = pickedTime
+                workDayStartButton.text = pickedTime.format(timeFormat)
+            }
+
+            WORK_DAY_END_PICKER -> {
+                workDayEndTime = pickedTime
+                workDayEndButton.text = pickedTime.format(timeFormat)
             }
 
             LUNCH_START_PICKER -> {
-                if (lunchStart == null) lunchStart = Calendar.getInstance()
-                setTime(lunchStart, hourOfDay, minute)
-                lunchStartButton.text = timeFormater.format(lunchStart?.time)
+                lunchStart = pickedTime
+                lunchStartButton.text = pickedTime.format(timeFormat)
+            }
+
+            LUNCH_END_PICKER -> {
+                lunchEnd = pickedTime
+                lunchEndButton.text = pickedTime.format(timeFormat)
             }
         }
     }
 
-    private fun setTime(calendar: Calendar?, hourOfDay: Int, minute: Int) {
-        calendar?.set(Calendar.HOUR_OF_DAY, hourOfDay)
-        calendar?.set(Calendar.MINUTE, minute)
-        calendar?.set(Calendar.SECOND, 0)
+    override fun onSaveInstanceState(outState: Bundle?) {
+        super.onSaveInstanceState(outState)
+        val bundle = Bundle()
+
+        bundle.putIntArray("work_day_date", workDayDate?.toArray())
+        bundle.putIntArray("work_day_start_time", workDayStartTime?.toArray())
+        bundle.putIntArray("work_day_end_time", workDayEndTime?.toArray())
+        bundle.putIntArray("lunch_start_time", lunchStart?.toArray())
+        bundle.putIntArray("lunch_end_time", lunchEnd?.toArray())
+        outState?.putAll(bundle)
     }
 
-}
+    private fun restoreState(bundle: Bundle?) {
+        try {
+            bundle?.getIntArray("work_day_date")?.let {
+                onDatePicked(WORK_DAY_DATE_PICKER, it[0], it[1], it[2])
+            }
 
-class TimePickerFragment : DialogFragment(),
-        TimePickerDialog.OnTimeSetListener {
+            bundle?.getIntArray("work_day_start_time")?.let {
+                onTimePicked(WORK_DAY_START_PICKER, it[0], it[1])
+            }
 
-    var listener: TimePickedListener? = null
-    var id: Int? = null
+            bundle?.getIntArray("work_day_end_time")?.let {
+                onTimePicked(WORK_DAY_END_PICKER, it[0], it[1])
+            }
 
-    companion object {
-        fun create(id: Int): TimePickerFragment {
-            val bundle = Bundle()
-            bundle.putInt("picker_id", id)
-            val fragment = TimePickerFragment()
-            fragment.arguments = bundle
-            return fragment
+            bundle?.getIntArray("lunch_start_time")?.let {
+                onTimePicked(LUNCH_START_PICKER, it[0], it[1])
+            }
+
+            bundle?.getIntArray("lunch_end_time")?.let {
+                onTimePicked(LUNCH_END_PICKER, it[0], it[1])
+            }
+        } catch (e: IndexOutOfBoundsException) {
+            throw IllegalArgumentException("Could not restore state", e)
         }
     }
+}
 
-    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        val calendar = Calendar.getInstance()
-        val hourOfDay = calendar.get(Calendar.HOUR_OF_DAY)
-        val minute = calendar.get(Calendar.MINUTE)
-
-        id = arguments.getInt("picker_id")
-
-        return TimePickerDialog(activity, this, hourOfDay, minute, true)
+data class WorkDayDate(val year: Int, val month: Int, val day: Int) {
+    fun format(formatter: DateFormat): CharSequence {
+        val date = DateTime(year, month, day, 0, 0)
+        return formatter.format(date.toDate())
     }
 
-    override fun onAttach(context: Context?) {
-        super.onAttach(context)
-
-        listener = context as WorkDayActivity
-    }
-
-    override fun onTimeSet(view: TimePicker?, hourOfDay: Int, minute: Int) {
-        id?.let { listener?.timePicked(it, hourOfDay, minute) }
+    fun toArray(): IntArray {
+        return intArrayOf(year, month, day)
     }
 }
 
-interface TimePickedListener {
-    fun timePicked(id: Int, hourOfDay: Int, minute: Int)
+data class Time(val hour: Int, val minute: Int) {
+    fun format(formatter: DateFormat): CharSequence {
+        val date = DateTime.now().withHourOfDay(hour).withMinuteOfHour(minute)
+        return formatter.format(date.toDate())
+    }
+
+    fun toArray(): IntArray {
+        return intArrayOf(hour, minute)
+    }
 }
