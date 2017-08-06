@@ -34,6 +34,14 @@ class WorkDayActivity : AppCompatActivity(),
 
         restoreState(savedInstanceState)
 
+        if (workDayDate == null) {
+            onDatePicked(WORK_DAY_DATE, Date.now())
+        }
+
+        if (workDayStart == null) {
+            onTimePicked(WORK_DAY_START, Time.now())
+        }
+
         workDateButton.setOnClickListener {
             DatePickerFragment.create(WORK_DAY_DATE)
                     .show(fragmentManager, "datePicker")
