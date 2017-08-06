@@ -15,15 +15,15 @@ class WorkDayActivity : AppCompatActivity(),
         DatePickedListener,
         TimePickedListener {
 
-    val WORK_DAY_DATE_PICKER = 1
-    val WORK_DAY_START_PICKER = 2
-    val LUNCH_START_PICKER = 3
-    val LUNCH_END_PICKER = 4
-    val WORK_DAY_END_PICKER = 5
+    val WORK_DAY_DATE = "workDayDate"
+    val WORK_DAY_START = "workDayStart"
+    val WORK_DAY_END = "wordDayEnd"
+    val LUNCH_START = "lunchStart"
+    val LUNCH_END = "lunchEnd"
 
     var workDayDate: Date? = null
-    var workDayStartTime: Time? = null
-    var workDayEndTime: Time? = null
+    var workDayStart: Time? = null
+    var workDayEnd: Time? = null
     var lunchStart: Time? = null
     var lunchEnd: Time? = null
 
@@ -35,57 +35,57 @@ class WorkDayActivity : AppCompatActivity(),
         restoreState(savedInstanceState)
 
         datePickButton.setOnClickListener {
-            DatePickerFragment.create(WORK_DAY_DATE_PICKER)
+            DatePickerFragment.create(WORK_DAY_DATE)
                     .show(fragmentManager, "datePicker")
         }
 
         workDayStartButton.setOnClickListener {
-            TimePickerFragment.create(WORK_DAY_START_PICKER)
+            TimePickerFragment.create(WORK_DAY_START)
                     .show(fragmentManager, "timePicker")
         }
 
         workDayEndButton.setOnClickListener {
-            TimePickerFragment.create(WORK_DAY_END_PICKER)
+            TimePickerFragment.create(WORK_DAY_END)
                     .show(fragmentManager, "timePicker")
         }
 
         lunchStartButton.setOnClickListener {
-            TimePickerFragment.create(LUNCH_START_PICKER)
+            TimePickerFragment.create(LUNCH_START)
                     .show(fragmentManager, "timePicker")
         }
 
         lunchEndButton.setOnClickListener {
-            TimePickerFragment.create(LUNCH_END_PICKER)
+            TimePickerFragment.create(LUNCH_END)
                     .show(fragmentManager, "timePicker")
         }
     }
 
-    override fun onDatePicked(id: Int, pickedDate: Date) {
+    override fun onDatePicked(id: String, pickedDate: Date) {
         val dateFormat = android.text.format.DateFormat.getDateFormat(this)
         workDayDate = pickedDate
         datePickButton.text = pickedDate.format(dateFormat)
     }
 
-    override fun onTimePicked(id: Int, pickedTime: Time) {
+    override fun onTimePicked(id: String, pickedTime: Time) {
         val timeFormat = android.text.format.DateFormat.getTimeFormat(this)
 
         when (id) {
-            WORK_DAY_START_PICKER -> {
-                workDayStartTime = pickedTime
+            WORK_DAY_START -> {
+                workDayStart = pickedTime
                 workDayStartButton.text = pickedTime.format(timeFormat)
             }
 
-            WORK_DAY_END_PICKER -> {
-                workDayEndTime = pickedTime
+            WORK_DAY_END -> {
+                workDayEnd = pickedTime
                 workDayEndButton.text = pickedTime.format(timeFormat)
             }
 
-            LUNCH_START_PICKER -> {
+            LUNCH_START -> {
                 lunchStart = pickedTime
                 lunchStartButton.text = pickedTime.format(timeFormat)
             }
 
-            LUNCH_END_PICKER -> {
+            LUNCH_END -> {
                 lunchEnd = pickedTime
                 lunchEndButton.text = pickedTime.format(timeFormat)
             }
@@ -96,33 +96,33 @@ class WorkDayActivity : AppCompatActivity(),
         super.onSaveInstanceState(outState)
         val bundle = Bundle()
 
-        bundle.putDate("work_day_date", workDayDate)
-        bundle.putTime("work_day_start_time", workDayStartTime)
-        bundle.putTime("work_day_end_time", workDayEndTime)
-        bundle.putTime("lunch_start_time", lunchStart)
-        bundle.putTime("lunch_end_time", lunchEnd)
+        bundle.putDate(WORK_DAY_DATE, workDayDate)
+        bundle.putTime(WORK_DAY_START, workDayStart)
+        bundle.putTime(WORK_DAY_END, workDayEnd)
+        bundle.putTime(LUNCH_START, lunchStart)
+        bundle.putTime(LUNCH_END, lunchEnd)
         outState?.putAll(bundle)
     }
 
     private fun restoreState(bundle: Bundle?) {
-        bundle?.getDate("work_day_date")?.let {
-            onDatePicked(WORK_DAY_DATE_PICKER, it)
+        bundle?.getDate(WORK_DAY_DATE)?.let {
+            onDatePicked(WORK_DAY_DATE, it)
         }
 
-        bundle?.getTime("work_day_start_time")?.let {
-            onTimePicked(WORK_DAY_START_PICKER, it)
+        bundle?.getTime(WORK_DAY_START)?.let {
+            onTimePicked(WORK_DAY_START, it)
         }
 
-        bundle?.getTime("work_day_end_time")?.let {
-            onTimePicked(WORK_DAY_END_PICKER, it)
+        bundle?.getTime(WORK_DAY_END)?.let {
+            onTimePicked(WORK_DAY_END, it)
         }
 
-        bundle?.getTime("lunch_start_time")?.let {
-            onTimePicked(LUNCH_START_PICKER, it)
+        bundle?.getTime(LUNCH_START)?.let {
+            onTimePicked(LUNCH_START, it)
         }
 
-        bundle?.getTime("lunch_end_time")?.let {
-            onTimePicked(LUNCH_END_PICKER, it)
+        bundle?.getTime(LUNCH_END)?.let {
+            onTimePicked(LUNCH_END, it)
         }
     }
 }

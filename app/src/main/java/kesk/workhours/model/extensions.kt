@@ -9,10 +9,7 @@ fun Bundle.putDate(key: String, value: Date?) {
 }
 
 fun Bundle.getDate(key: String): Date? {
-    return getIntArray(key)?.let {
-        if (it.size != 3) throw IllegalArgumentException()
-        Date(it[0], it[1], it[2])
-    }
+    return getIntArray(key)?.let { Date(it[0], it[1], it[2]) }
 }
 
 fun Bundle.putTime(key: String, value: Time?) {
@@ -20,8 +17,5 @@ fun Bundle.putTime(key: String, value: Time?) {
 }
 
 fun Bundle.getTime(key: String): Time? {
-    return getIntArray(key)?.let {
-        if (it.size != 2) throw IllegalArgumentException()
-        Time(it[0], it[1])
-    }
+    return getIntArray(key)?.let { Time(it[0], it[1]) }
 }

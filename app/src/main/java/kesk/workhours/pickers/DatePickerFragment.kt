@@ -13,12 +13,12 @@ class DatePickerFragment : DialogFragment(),
         DatePickerDialog.OnDateSetListener {
 
     var listener: DatePickedListener? = null
-    var id: Int? = null
+    var id: String? = null
 
     companion object {
-        fun create(id: Int): DatePickerFragment {
+        fun create(id: String): DatePickerFragment {
             val bundle = Bundle()
-            bundle.putInt("picker_id", id)
+            bundle.putString("picker_id", id)
             val fragment = DatePickerFragment()
             fragment.arguments = bundle
             return fragment
@@ -31,7 +31,7 @@ class DatePickerFragment : DialogFragment(),
         val month = calendar.get(Calendar.MONTH)
         val dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH)
 
-        id = arguments.getInt("picker_id")
+        id = arguments.getString("picker_id")
 
         return DatePickerDialog(activity, this, year, month, dayOfMonth)
     }

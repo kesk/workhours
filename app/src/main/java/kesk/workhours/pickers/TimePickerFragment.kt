@@ -13,12 +13,12 @@ class TimePickerFragment : DialogFragment(),
         TimePickerDialog.OnTimeSetListener {
 
     var listener: TimePickedListener? = null
-    var id: Int? = null
+    var id: String? = null
 
     companion object {
-        fun create(id: Int): TimePickerFragment {
+        fun create(id: String): TimePickerFragment {
             val bundle = Bundle()
-            bundle.putInt("picker_id", id)
+            bundle.putString("picker_id", id)
             val fragment = TimePickerFragment()
             fragment.arguments = bundle
             return fragment
@@ -30,7 +30,7 @@ class TimePickerFragment : DialogFragment(),
         val hourOfDay = calendar.get(Calendar.HOUR_OF_DAY)
         val minute = calendar.get(Calendar.MINUTE)
 
-        id = arguments.getInt("picker_id")
+        id = arguments.getString("picker_id")
 
         return TimePickerDialog(activity, this, hourOfDay, minute, true)
     }
