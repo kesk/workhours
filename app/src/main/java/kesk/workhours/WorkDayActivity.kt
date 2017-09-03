@@ -2,7 +2,6 @@ package kesk.workhours
 
 import android.Manifest
 import android.accounts.AccountManager
-import android.app.ProgressDialog
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
@@ -57,7 +56,6 @@ class WorkDayActivity : AppCompatActivity(),
     private val SCOPES = arrayListOf(SheetsScopes.SPREADSHEETS)
     private val PREF_ACCOUNT_NAME = "accountName"
 
-    private var progress: ProgressDialog? = null
     var credential: GoogleAccountCredential? = null
 
     var workDayDate: Date? = null
@@ -66,84 +64,6 @@ class WorkDayActivity : AppCompatActivity(),
     var lunchStart: Time? = null
     var lunchEnd: Time? = null
 
-    private fun getResultsFromApi() {
-        if (!isGooglePlayServicesAvailable()) {
-            acquireGooglePlayServices()
-        } else if (credential?.selectedAccountName == null) {
-            chooseAccount()
-        } else if (!isDeviceOnline()) {
-            // Show not online text
-        } else {
-            val credential = credential
-            val date = workDayDate
-            val dayStart = workDayStart
-            val dayEnd = workDayEnd
-            val lunchStart = lunchStart
-            val lunchEnd = lunchEnd
-
-            if (credential != null && date != null && dayStart != null && dayEnd != null &&
-                    lunchStart != null && lunchEnd != null) {
-                val dateFormat = getDateFormat(this)
-                val timeFormat = getTimeFormat(this)
-                MakeRequestTask(credential, date, dayStart, dayEnd, lunchStart, lunchEnd, dateFormat, timeFormat).execute()
-            }
-        }
-    }
-
-    private fun isDeviceOnline(): Boolean {
-        val connMgr = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val networkInfo = connMgr.activeNetworkInfo
-        return networkInfo != null && networkInfo.isConnected
-    }
-
-    @AfterPermissionGranted(REQUEST_PERMISSION_GET_ACCOUNTS)
-    private fun chooseAccount() {
-        if (EasyPermissions.hasPermissions(
-                this, Manifest.permission.GET_ACCOUNTS)) {
-            val accountName = getPreferences(Context.MODE_PRIVATE)
-                    .getString(PREF_ACCOUNT_NAME, null)
-            if (accountName != null) {
-                credential?.selectedAccountName = accountName
-                getResultsFromApi()
-            } else {
-                // Start a dialog from which the user can choose an account
-                startActivityForResult(
-                        credential?.newChooseAccountIntent(),
-                        REQUEST_ACCOUNT_PICKER)
-            }
-        } else {
-            // Request the GET_ACCOUNTS permission via a user dialog
-            EasyPermissions.requestPermissions(
-                    this,
-                    "This app needs to access your Google account (via Contacts).",
-                    REQUEST_PERMISSION_GET_ACCOUNTS,
-                    Manifest.permission.GET_ACCOUNTS)
-        }
-    }
-
-    private fun isGooglePlayServicesAvailable(): Boolean {
-        val apiAvailability = GoogleApiAvailability.getInstance()
-        val connectionStatusCode = apiAvailability.isGooglePlayServicesAvailable(this)
-        return connectionStatusCode == ConnectionResult.SUCCESS
-    }
-
-    private fun acquireGooglePlayServices() {
-        val apiAvailability = GoogleApiAvailability.getInstance()
-        val connectionStatusCode = apiAvailability.isGooglePlayServicesAvailable(this)
-        if (apiAvailability.isUserResolvableError(connectionStatusCode)) {
-            showGooglePlayServicesAvailabilityErrorDialog(connectionStatusCode)
-        }
-    }
-
-    private fun showGooglePlayServicesAvailabilityErrorDialog(connectionStatusCode: Int) {
-        val apiAvailability = GoogleApiAvailability.getInstance()
-        val dialog = apiAvailability.getErrorDialog(
-                this,
-                connectionStatusCode,
-                REQUEST_GOOGLE_PLAY_SERVICES)
-        dialog.show()
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         JodaTimeAndroid.init(this)
@@ -151,8 +71,6 @@ class WorkDayActivity : AppCompatActivity(),
 
         credential = GoogleAccountCredential.usingOAuth2(applicationContext, SCOPES)
                 .setBackOff(ExponentialBackOff())
-
-        progress = ProgressDialog(this)
 
         restoreState(savedInstanceState)
 
@@ -289,6 +207,84 @@ class WorkDayActivity : AppCompatActivity(),
         }
     }
 
+    private fun getResultsFromApi() {
+        if (!isGooglePlayServicesAvailable()) {
+            acquireGooglePlayServices()
+        } else if (credential?.selectedAccountName == null) {
+            chooseAccount()
+        } else if (!isDeviceOnline()) {
+            // Show not online text
+        } else {
+            val credential = credential
+            val date = workDayDate
+            val dayStart = workDayStart
+            val dayEnd = workDayEnd
+            val lunchStart = lunchStart
+            val lunchEnd = lunchEnd
+
+            if (credential != null && date != null && dayStart != null && dayEnd != null &&
+                    lunchStart != null && lunchEnd != null) {
+                val dateFormat = getDateFormat(this)
+                val timeFormat = getTimeFormat(this)
+                MakeRequestTask(credential, date, dayStart, dayEnd, lunchStart, lunchEnd, dateFormat, timeFormat).execute()
+            }
+        }
+    }
+
+    private fun isDeviceOnline(): Boolean {
+        val connMgr = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val networkInfo = connMgr.activeNetworkInfo
+        return networkInfo != null && networkInfo.isConnected
+    }
+
+    @AfterPermissionGranted(REQUEST_PERMISSION_GET_ACCOUNTS)
+    private fun chooseAccount() {
+        if (EasyPermissions.hasPermissions(
+                this, Manifest.permission.GET_ACCOUNTS)) {
+            val accountName = getPreferences(Context.MODE_PRIVATE)
+                    .getString(PREF_ACCOUNT_NAME, null)
+            if (accountName != null) {
+                credential?.selectedAccountName = accountName
+                getResultsFromApi()
+            } else {
+                // Start a dialog from which the user can choose an account
+                startActivityForResult(
+                        credential?.newChooseAccountIntent(),
+                        REQUEST_ACCOUNT_PICKER)
+            }
+        } else {
+            // Request the GET_ACCOUNTS permission via a user dialog
+            EasyPermissions.requestPermissions(
+                    this,
+                    "This app needs to access your Google account (via Contacts).",
+                    REQUEST_PERMISSION_GET_ACCOUNTS,
+                    Manifest.permission.GET_ACCOUNTS)
+        }
+    }
+
+    private fun isGooglePlayServicesAvailable(): Boolean {
+        val apiAvailability = GoogleApiAvailability.getInstance()
+        val connectionStatusCode = apiAvailability.isGooglePlayServicesAvailable(this)
+        return connectionStatusCode == ConnectionResult.SUCCESS
+    }
+
+    private fun acquireGooglePlayServices() {
+        val apiAvailability = GoogleApiAvailability.getInstance()
+        val connectionStatusCode = apiAvailability.isGooglePlayServicesAvailable(this)
+        if (apiAvailability.isUserResolvableError(connectionStatusCode)) {
+            showGooglePlayServicesAvailabilityErrorDialog(connectionStatusCode)
+        }
+    }
+
+    private fun showGooglePlayServicesAvailabilityErrorDialog(connectionStatusCode: Int) {
+        val apiAvailability = GoogleApiAvailability.getInstance()
+        val dialog = apiAvailability.getErrorDialog(
+                this,
+                connectionStatusCode,
+                REQUEST_GOOGLE_PLAY_SERVICES)
+        dialog.show()
+    }
+
     private inner class MakeRequestTask(credential: GoogleAccountCredential,
                                         val workDayDate: Date,
                                         val workDayStart: Time,
@@ -352,16 +348,16 @@ class WorkDayActivity : AppCompatActivity(),
         }
 
         override fun onPreExecute() {
-            progress?.show()
+            submitButton.isEnabled = false
         }
 
         override fun onPostExecute(output: Unit?) {
-            progress?.hide()
+            submitButton.isEnabled = true
             Log.d(LOG_TAG, "Done calling Sheets API")
         }
 
         override fun onCancelled() {
-            progress?.hide()
+            submitButton.isEnabled = true
             if (lastError != null) {
                 when (lastError) {
                     is GooglePlayServicesAvailabilityIOException ->
