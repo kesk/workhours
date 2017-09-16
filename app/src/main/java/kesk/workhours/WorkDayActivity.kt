@@ -19,7 +19,6 @@ import com.google.api.client.googleapis.extensions.android.gms.auth.GooglePlaySe
 import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException
 import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.client.util.ExponentialBackOff
-import com.google.api.services.sheets.v4.Sheets
 import com.google.api.services.sheets.v4.SheetsScopes
 import com.google.api.services.sheets.v4.model.ValueRange
 import kesk.workhours.model.Date
@@ -42,6 +41,7 @@ class WorkDayActivity : AppCompatActivity(),
     private val LOG_TAG = "WorkDayActivity"
 
     companion object {
+        const val PREFS_NAME = "WorkDayPreferences"
         const val REQUEST_ACCOUNT_PICKER = 1000
         const val REQUEST_AUTHORIZATION = 1002
         const val REQUEST_GOOGLE_PLAY_SERVICES = 1003
@@ -54,15 +54,18 @@ class WorkDayActivity : AppCompatActivity(),
     private val LUNCH_START = "lunchStart"
     private val LUNCH_END = "lunchEnd"
     private val SCOPES = arrayListOf(SheetsScopes.SPREADSHEETS)
-    private val PREF_ACCOUNT_NAME = "accountName"
 
-    var credential: GoogleAccountCredential? = null
+    private val SHARED_PREF_CURRENT_WORKDAY = "currentWorkDay"
 
-    var workDayDate: Date? = null
-    var workDayStart: Time? = null
-    var workDayEnd: Time? = null
-    var lunchStart: Time? = null
-    var lunchEnd: Time? = null
+    private val PREF_ACCOUNT_NAME = "googleAccountName"
+
+    private var credential: GoogleAccountCredential? = null
+
+    private var workDayDate: Date? = null
+    private var workDayStart: Time? = null
+    private var workDayEnd: Time? = null
+    private var lunchStart: Time? = null
+    private var lunchEnd: Time? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -72,7 +75,7 @@ class WorkDayActivity : AppCompatActivity(),
         credential = GoogleAccountCredential.usingOAuth2(applicationContext, SCOPES)
                 .setBackOff(ExponentialBackOff())
 
-        restoreState(savedInstanceState)
+        restoreState()
 
         if (workDayDate == null) {
             onDatePicked(WORK_DAY_DATE, Date.now())
@@ -110,6 +113,8 @@ class WorkDayActivity : AppCompatActivity(),
         submitButton.setOnClickListener {
             getResultsFromApi()
         }
+
+        resetButton.setOnClickListener { resetWordDay() }
     }
 
     override fun onDatePicked(id: String, pickedDate: Date) {
@@ -144,35 +149,37 @@ class WorkDayActivity : AppCompatActivity(),
     }
 
     override fun onSaveInstanceState(outState: Bundle?) {
-        super.onSaveInstanceState(outState)
-        val bundle = Bundle()
+        val preferences = getSharedPreferences(SHARED_PREF_CURRENT_WORKDAY, Context.MODE_PRIVATE)
+        val editor = preferences.edit()
 
-        bundle.putDate(WORK_DAY_DATE, workDayDate)
-        bundle.putTime(WORK_DAY_START, workDayStart)
-        bundle.putTime(WORK_DAY_END, workDayEnd)
-        bundle.putTime(LUNCH_START, lunchStart)
-        bundle.putTime(LUNCH_END, lunchEnd)
-        outState?.putAll(bundle)
+        editor.putDate(WORK_DAY_DATE, workDayDate)
+        editor.putTime(WORK_DAY_START, workDayStart)
+        editor.putTime(WORK_DAY_END, workDayEnd)
+        editor.putTime(LUNCH_START, lunchStart)
+        editor.putTime(LUNCH_END, lunchEnd)
+        editor.commit()
     }
 
-    private fun restoreState(bundle: Bundle?) {
-        bundle?.getDate(WORK_DAY_DATE)?.let {
+    private fun restoreState() {
+        val preferences = getSharedPreferences(SHARED_PREF_CURRENT_WORKDAY, Context.MODE_PRIVATE)
+
+        preferences.getDate(WORK_DAY_DATE)?.let {
             onDatePicked(WORK_DAY_DATE, it)
         }
 
-        bundle?.getTime(WORK_DAY_START)?.let {
+        preferences?.getTime(WORK_DAY_START)?.let {
             onTimePicked(WORK_DAY_START, it)
         }
 
-        bundle?.getTime(WORK_DAY_END)?.let {
+        preferences?.getTime(WORK_DAY_END)?.let {
             onTimePicked(WORK_DAY_END, it)
         }
 
-        bundle?.getTime(LUNCH_START)?.let {
+        preferences?.getTime(LUNCH_START)?.let {
             onTimePicked(LUNCH_START, it)
         }
 
-        bundle?.getTime(LUNCH_END)?.let {
+        preferences?.getTime(LUNCH_END)?.let {
             onTimePicked(LUNCH_END, it)
         }
     }
@@ -226,7 +233,7 @@ class WorkDayActivity : AppCompatActivity(),
                     lunchStart != null && lunchEnd != null) {
                 val dateFormat = getDateFormat(this)
                 val timeFormat = getTimeFormat(this)
-                MakeRequestTask(credential, date, dayStart, dayEnd, lunchStart, lunchEnd, dateFormat, timeFormat).execute()
+                AppendRowTask(credential, date, dayStart, dayEnd, lunchStart, lunchEnd, dateFormat, timeFormat).execute()
             }
         }
     }
@@ -285,14 +292,33 @@ class WorkDayActivity : AppCompatActivity(),
         dialog.show()
     }
 
-    private inner class MakeRequestTask(credential: GoogleAccountCredential,
-                                        val workDayDate: Date,
-                                        val workDayStart: Time,
-                                        val workDayEnd: Time,
-                                        val lunchStart: Time,
-                                        val lunchEnd: Time,
-                                        val dateFormat: DateFormat,
-                                        val timeFormat: DateFormat): AsyncTask<Unit, Unit, Unit>() {
+    private fun resetWordDay() {
+        val preferences = getSharedPreferences(SHARED_PREF_CURRENT_WORKDAY, Context.MODE_PRIVATE)
+        val editor = preferences.edit()
+        editor.removeTime(WORK_DAY_END)
+        editor.removeTime(LUNCH_START)
+        editor.removeTime(LUNCH_END)
+        editor.apply()
+
+        workDayEnd = null
+        lunchStart = null
+        lunchEnd = null
+
+        onDatePicked(WORK_DAY_DATE, Date.now())
+        onTimePicked(WORK_DAY_START, Time.now())
+        workDayEndButton.text = "Time"
+        lunchStartButton.text = "Start"
+        lunchEndButton.text = "End"
+    }
+
+    private inner class AppendRowTask(credential: GoogleAccountCredential,
+                                      val workDayDate: Date,
+                                      val workDayStart: Time,
+                                      val workDayEnd: Time,
+                                      val lunchStart: Time,
+                                      val lunchEnd: Time,
+                                      val dateFormat: DateFormat,
+                                      val timeFormat: DateFormat): AsyncTask<Unit, Unit, Unit>() {
         private val LOG_TAG = "AppendDataTask"
 
         private var service: com.google.api.services.sheets.v4.Sheets
@@ -307,10 +333,6 @@ class WorkDayActivity : AppCompatActivity(),
                     .build()
         }
 
-        /**
-         * Background task to call Google Sheets API.
-         * @param params no parameters needed for this task.
-         */
         override fun doInBackground(vararg params: Unit) {
             try {
                 appendData()
@@ -320,13 +342,6 @@ class WorkDayActivity : AppCompatActivity(),
             }
         }
 
-        /**
-         * Fetch a list of names and majors of students in a sample spreadsheet:
-         * https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit
-         * @return List of names and majors
-         * *
-         * @throws IOException
-         */
         private fun appendData() {
             val spreadsheetId = "1f0Q2GDFvoJKlXm0sdxEZlLHJTapMLW2l-gjqnLQfFzw"
             val range = "Blad1!A:E"
@@ -341,7 +356,7 @@ class WorkDayActivity : AppCompatActivity(),
 
             val data = ValueRange().setValues(values)
 
-            this.service.spreadsheets().values()
+            service.spreadsheets().values()
                     .append(spreadsheetId, range, data)
                     .setValueInputOption("RAW")
                     .execute()
