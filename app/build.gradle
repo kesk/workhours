@@ -41,4 +41,10 @@ dependencies {
     compile('com.google.apis:google-api-services-sheets:v4-rev483-1.22.0') {
         exclude group: 'org.apache.httpcomponents'
     }
+    compile 'org.jetbrains.anko:anko-coroutines:0.10.1'
+}
+kotlin {
+    experimental {
+        coroutines "enable"
+    }
 }

@@ -5,7 +5,6 @@ import android.accounts.AccountManager
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
-import android.os.AsyncTask
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
 import android.text.format.DateFormat.getDateFormat
@@ -15,20 +14,23 @@ import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.api.client.extensions.android.http.AndroidHttp
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
-import com.google.api.client.googleapis.extensions.android.gms.auth.GooglePlayServicesAvailabilityIOException
-import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException
 import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.client.util.ExponentialBackOff
 import com.google.api.services.sheets.v4.SheetsScopes
 import com.google.api.services.sheets.v4.model.ValueRange
 import kesk.workhours.model.Date
 import kesk.workhours.model.Time
+import kesk.workhours.model.WorkDay
 import kesk.workhours.pickers.DatePickedListener
 import kesk.workhours.pickers.DatePickerFragment
 import kesk.workhours.pickers.TimePickedListener
 import kesk.workhours.pickers.TimePickerFragment
 import kotlinx.android.synthetic.main.activity_work_day.*
+import kotlinx.coroutines.experimental.android.UI
+import kotlinx.coroutines.experimental.async
 import net.danlew.android.joda.JodaTimeAndroid
+import org.jetbrains.anko.coroutines.experimental.asReference
+import org.jetbrains.anko.coroutines.experimental.bg
 import pub.devrel.easypermissions.AfterPermissionGranted
 import pub.devrel.easypermissions.EasyPermissions
 import java.text.DateFormat
@@ -223,17 +225,10 @@ class WorkDayActivity : AppCompatActivity(),
             // Show not online text
         } else {
             val credential = credential
-            val date = workDayDate
-            val dayStart = workDayStart
-            val dayEnd = workDayEnd
-            val lunchStart = lunchStart
-            val lunchEnd = lunchEnd
+            val workDay = WorkDay.orNull(workDayDate, workDayStart, workDayEnd, lunchStart, lunchEnd)
 
-            if (credential != null && date != null && dayStart != null && dayEnd != null &&
-                    lunchStart != null && lunchEnd != null) {
-                val dateFormat = getDateFormat(this)
-                val timeFormat = getTimeFormat(this)
-                AppendRowTask(credential, date, dayStart, dayEnd, lunchStart, lunchEnd, dateFormat, timeFormat).execute()
+            if (credential != null && workDay != null) {
+                submitToGoogleSheets(workDay, credential)
             }
         }
     }
@@ -311,86 +306,51 @@ class WorkDayActivity : AppCompatActivity(),
         lunchEndButton.text = "End"
     }
 
-    private inner class AppendRowTask(credential: GoogleAccountCredential,
-                                      val workDayDate: Date,
-                                      val workDayStart: Time,
-                                      val workDayEnd: Time,
-                                      val lunchStart: Time,
-                                      val lunchEnd: Time,
-                                      val dateFormat: DateFormat,
-                                      val timeFormat: DateFormat): AsyncTask<Unit, Unit, Unit>() {
-        private val LOG_TAG = "AppendDataTask"
+    private fun submitToGoogleSheets(workDay: WorkDay, credential: GoogleAccountCredential) {
+        val spreadsheetId = "1f0Q2GDFvoJKlXm0sdxEZlLHJTapMLW2l-gjqnLQfFzw"
+        val range = "Blad1!A:E"
+        val workDayActivity = this.asReference()
+        submitButton.isEnabled = false
 
-        private var service: com.google.api.services.sheets.v4.Sheets
-        private var lastError: Exception? = null
+        async(UI) {
+            val dateFormat = getDateFormat(workDayActivity())
+            val timeFormat = getTimeFormat(workDayActivity())
 
-        init {
-            val transport = AndroidHttp.newCompatibleTransport()
-            val jsonFactory = JacksonFactory.getDefaultInstance()
-            service = com.google.api.services.sheets.v4.Sheets.Builder(
-                    transport, jsonFactory, credential)
-                    .setApplicationName("Google Sheets API Android Quickstart")
-                    .build()
+            bg {
+                appendWorkDayToSheet(credential, spreadsheetId, range, workDay, dateFormat, timeFormat)
+            }.await()
+            workDayActivity().submitButton.isEnabled = true
         }
+    }
 
-        override fun doInBackground(vararg params: Unit) {
-            try {
-                appendData()
-            } catch (e: Exception) {
-                lastError = e
-                cancel(true)
-            }
-        }
+    private fun appendWorkDayToSheet(credential: GoogleAccountCredential,
+                                     spreadsheetId: String,
+                                     range: String,
+                                     workDay: WorkDay,
+                                     dateFormat: DateFormat,
+                                     timeFormat: DateFormat): Boolean {
+        val transport = AndroidHttp.newCompatibleTransport()
+        val jsonFactory = JacksonFactory.getDefaultInstance()
+        val service = com.google.api.services.sheets.v4.Sheets.Builder(
+                transport, jsonFactory, credential)
+                .setApplicationName("Google Sheets API Android Quickstart")
+                .build()
 
-        private fun appendData() {
-            val spreadsheetId = "1f0Q2GDFvoJKlXm0sdxEZlLHJTapMLW2l-gjqnLQfFzw"
-            val range = "Blad1!A:E"
+        val values: List<List<String>> = listOf(listOf(
+                workDay.date.format(dateFormat).toString(),
+                workDay.start.format(timeFormat).toString(),
+                workDay.end.format(timeFormat).toString(),
+                workDay.lunchStart.format(timeFormat).toString(),
+                workDay.lunchEnd.format(timeFormat).toString()
+        ))
 
-            val values: List<List<String>> = listOf(listOf(
-                    workDayDate.format(dateFormat).toString(),
-                    workDayStart.format(timeFormat).toString(),
-                    workDayEnd.format(timeFormat).toString(),
-                    lunchStart.format(timeFormat).toString(),
-                    lunchEnd.format(timeFormat).toString()
-            ))
+        val data = ValueRange().setValues(values)
 
-            val data = ValueRange().setValues(values)
+        val result = service.spreadsheets().values()
+                .append(spreadsheetId, range, data)
+                .setValueInputOption("RAW")
+                .execute()
 
-            service.spreadsheets().values()
-                    .append(spreadsheetId, range, data)
-                    .setValueInputOption("RAW")
-                    .execute()
-        }
-
-        override fun onPreExecute() {
-            submitButton.isEnabled = false
-        }
-
-        override fun onPostExecute(output: Unit?) {
-            submitButton.isEnabled = true
-            Log.d(LOG_TAG, "Done calling Sheets API")
-        }
-
-        override fun onCancelled() {
-            submitButton.isEnabled = true
-            if (lastError != null) {
-                when (lastError) {
-                    is GooglePlayServicesAvailabilityIOException ->
-                        showGooglePlayServicesAvailabilityErrorDialog(
-                                (lastError as GooglePlayServicesAvailabilityIOException)
-                                        .connectionStatusCode)
-
-                    is UserRecoverableAuthIOException ->
-                        startActivityForResult(
-                                (lastError as UserRecoverableAuthIOException).intent,
-                                WorkDayActivity.REQUEST_AUTHORIZATION)
-
-                    else ->
-                        Log.d(LOG_TAG,"The following error occurred:\n" + lastError?.message)
-                }
-            } else {
-                Log.d(LOG_TAG,"Request cancelled.")
-            }
-        }
+        return result.updates != null
     }
 }

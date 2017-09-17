@@ -30,3 +30,24 @@ data class Time(val hour: Int, val minute: Int) {
         return formatter.format(date.toDate())
     }
 }
+
+data class WorkDay(val date: Date,
+                   val start: Time,
+                   val end: Time,
+                   val lunchStart: Time,
+                   val lunchEnd: Time) {
+    companion object {
+        fun orNull(date: Date?,
+                   start: Time?,
+                   end: Time?,
+                   lunchStart: Time?,
+                   lunchEnd: Time?): WorkDay? {
+            return if (date != null && start != null && end != null && lunchStart != null
+                    && lunchEnd != null) {
+                WorkDay(date, start, end, lunchStart, lunchEnd)
+            } else {
+                null
+            }
+        }
+    }
+}
